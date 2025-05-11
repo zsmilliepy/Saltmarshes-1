@@ -1,0 +1,43 @@
+import os
+from qgis.core import (
+    QgsRasterLayer,
+    QgsProcessingFeedback,
+    QgsProject,
+    QgsApplication
+)
+import processing
+
+# Set the directory containing the rasters
+input_folder = r'C:\Users\zsmil\OneDrive - Ulster University\EGM701\Data\Sites\DTM_1m\Python'
+output_folder = input_folder  # Change if you want to save elsewhere
+
+# Get all raster files in the folder (modify extension if needed)
+raster_files = [f for f in os.listdir(input_folder) if f.lower().endswith(('.tif', '.tiff'))]
+
+# Create feedback object
+feedback = QgsProcessingFeedback()
+
+for raster_file in raster_files:
+    input_path = os.path.join(input_folder, raster_file)
+    base_name = os.path.splitext(raster_file)[0]
+    output_path = os.path.join(output_folder, f"submerged_{base_name}.tif")
+
+    # Load raster layer
+    raster_layer = QgsRasterLayer(input_path, base_name)
+    if not raster_layer.isValid():
+        print(f"Failed to load raster: {input_path}")
+        continue
+
+    # Run raster calculator
+    expression = f'("{base_name}@1" >= 0) AND ("{base_name}@1" <= 0.76)'
+
+    processing.run("qgis:rastercalculator", {
+        'EXPRESSION': expression,
+        'LAYERS': [raster_layer],
+        'EXTENT': raster_layer.extent(),
+        'CRS': raster_layer.crs().toWkt(),
+        'OUTPUT': output_path,
+        'CELLSIZE': raster_layer.rasterUnitsPerPixelX()
+    }, feedback=feedback)
+
+    print(f"Saved: {output_path}")
